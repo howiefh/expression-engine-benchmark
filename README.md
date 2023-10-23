@@ -376,6 +376,22 @@ AviatorScript，QLExpress，JEXL均从不同程度提供了一些安全选项设
     // 关闭循环、new 实例，import等特性
     new JexlBuilder().features(new JexlFeatures().loops(false).newInstance(false).importPragma(false)).create();
     ``` 
+  
+### 语法
+
+接下来从类型、操作符、控制语句、集合、方法定义几方面比较一下不同表达式引擎的语法设计。
+
+类型方面，AviatorScript 设计了独特的类型，使用时需要注意其类型转换的优先级long->bigint->decimal->double。AviatorScript、MVEL、OGNL、JEXL都支持BigInteger、BigDecimal字面量，这意味着进行精确计算时可以使用字面量，将更方便。此外AviatorScript、QLExpress都支持高精度计算的设置项。
+
+操作符方面，QLExpress支持替换、自定义操作符及操作符别名，这可能有助于简化复杂表达式或使表达式更加直观，不过添加预置函数应该可以达到差不多的效果。AviatorScript也支持自定义部分操作符，不过支持数量相当有限。AviatorScript、SpEl、JEXL支持正则匹配操作符。
+
+控制语句方面，除OGNL、SpEl、JUEL不支持控制语句外，其他都支持，不过需要注意 AviatorScript 的 `else if` 语法有些特殊写作 `elsif`，foreach语句跟Java也有所不同。
+
+集合方面，除JUEL外其他都提供了快捷定义的方式，只不过语法不同。
+
+函数定义方面，SpEl、JUEL均不支持，OGNL支持伪lambda定义，其他都支持定义函数。QLExpress不支持定义lambda。
+
+综合来看，和Java语法都或多或少存在一些差异。AviatorScript设计了自己特有的一些语法，使用的话需要熟悉一下。QLExpress支持自定义操作符，可以使表达式看起来更直观。MVEL、JEXL的语法可能更接近Java，让人更容易接受一些。OGNL、SpEl、JUEL的语法更简单一些，不支持控制语句和函数定义，当然也可以通过预置一些函数变通解决一些较复杂的问题。
 
 ### 使用案例
 
@@ -402,6 +418,8 @@ AviatorScript，QLExpress，JEXL均从不同程度提供了一些安全选项设
 性能方面，如果你使用表达式引擎执行字面量算术计算或方法调用偏多可以选用SpEl，MVEL。如果希望整体性能表现较好可以选用 AviatorScript。
 
 安全方面，如果想自定义安全选项，可以考虑 AviatorScript，QLExpress和JEXL。
+
+语法方面，可能存在一些主观因素，仅供参考，个人觉得MVEL、JEXL的语法设计使用起来会更容易一些。
 
 使用案例方面，AviatorScript，MVEL，QLExpress在国内都有实际使用案例可循。
 
