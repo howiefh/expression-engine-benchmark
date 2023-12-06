@@ -60,7 +60,7 @@ Janino是一个超小、超快的Java编译器，也可以用作表达式引擎�
 
 由于Janino实际是一个Java编译器，理论上其性能应该接近于直接执行Java代码，其次作为表达式引擎使用比较复杂。下面的测试中，Janino不参与比较，可以将其作为一个参照。
 
-规则引擎如 Drools， urule，easy-rules 不参与此次比较。相对比较成熟完善的脚本语言如Groovy也不参与比较。
+此外规则引擎如 Drools， urule， easy-rules 等不参与此次选型比较。相对比较成熟完善的脚本语言如Groovy，JavaScript等也不参与选型比较。这篇文章主要针对相对轻量简单的表达式引擎进行选型。
 
 ## 技术栈选型评估
 
@@ -408,6 +408,22 @@ AviatorScript，QLExpress，JEXL均从不同程度提供了一些安全选项设
 | [JUEL][JUEL]             | JSP                                                                                 |
 | [Janino][Janino]         | Apache Spark、Apache Flink、Groovy                                                    |
 
+### 开源协议
+
+使用开源软件需要关注潜在的法律和安全风险，选择合适的开源协议的开源软件可以降低这些风险。需要根据项目需求、商业模式、合规性要求等因素综合考量开源协议的影响。
+
+| 名称                       | 开源协议                                                                                      | 
+|--------------------------|-------------------------------------------------------------------------------------------|
+| [AviatorScript][Aviator] | ![GitHub License](https://img.shields.io/badge/license-LGPL--3.0-orange)                  |
+| [MVEL][MVEL]             | ![GitHub License](https://img.shields.io/github/license/mvel/mvel)                        |
+| [OGNL][OGNL]             | ![GitHub License](https://img.shields.io/github/license/orphan-oss/ognl)                  |
+| [SpEl][Spring]           | ![GitHub License](https://img.shields.io/github/license/spring-projects/spring-framework) |
+| [QLExpress][QLExpress]   | ![GitHub License](https://img.shields.io/github/license/alibaba/QLExpress)                |
+| [JEXL][JEXL]             | ![GitHub License](https://img.shields.io/github/license/apache/commons-jexl)              |
+| [JUEL][JUEL]             | ![GitHub License](https://img.shields.io/github/license/beckchr/juel)                     |
+| [Janino][Janino]         | [GitHub License](https://github.com/janino-compiler/janino/blob/master/LICENSE)           |
+
+除 AviatorScript 使用 LGPL-3.0 开源协议外，MVEL、OGNL、SpEL、QLExpress、JEXL、JUEL 均使用 Apache-2.0 开源协议。如果是以类库形式使用 AviatorScript 并做好封装处理，商业软件中使用 AviatorScript 的风险是可控的。
 
 ## 选型建议
 
