@@ -1,86 +1,101 @@
-# 表达式引擎比较
+# Java表达式引擎选型调研分析
+## 1 简介
 
-## 简介
+我们项目组主要负责面向企业客户的业务系统，**企业的需求往往是多样化且复杂的，对接不同企业时会有不同的定制化的业务模型和流程**。 我们在业务系统中**使用表达式引擎，集中配置管理业务规则，并实现实时决策和计算，可以提高系统的灵活性和响应能力**，从而更好地满足业务的需求。
 
-表达式引擎的使用非常广泛，涵盖了许多不同的领域和应用，用于处理和计算各种类型的表达式和规则。具体来说主要有以下使用场景：
+举个简单的例子，假设我们有一个业务场景，在返利系统中，当推广员满足一定的奖励条件时，就会给其对应的奖励金额。例如某个产品的具体奖励规则如下：
 
-* 公式计算：表达式引擎可以用于解析和计算复杂的数学或逻辑公式。
-* 数据转换和处理：在数据集成和ETL（Extract, Transform, Load）过程中，表达式引擎可以用于解析和转换数据，执行数据清洗、映射和转换等操作。
-* 动态业务规则：表达式引擎可以处理需要灵活配置且不断变更的动态业务规则，解析和评估规则条件，以确定是否满足规则的触发条件，并执行相应的操作。
+| 奖励条件                   | 奖励金额 |
+|------------------------|------|
+| 拉新用户数大于等于3个且客单价大于50元   | 100元 |
+| 拉新用户数大于等于5个且客单价大于100元  | 200元 |
+| 拉新用户数大于等于10个且客单价大于200元 | 500元 |
 
-下面将针对 [AviatorScript][Aviator]、[MVEL][MVEL]、[OGNL][OGNL]、[SpEL][Spring]、[QLExpress][QLExpress]、[JEXL][JEXL]、[JUEL][JUEL] 几种常见表达式引擎进行比较。先简单介绍一下这几种表达式引擎。
+这个规则看起来很好实现，只要在代码里写几个if else分支就可以了。但是如果返利系统对接了多家供应商，且每家提供的产品的奖励规则都不同呢？再通过硬编码的方式写if else似乎就不太好了，每次增加修改删除规则都需要系统发版上线。
 
-### [AviatorScript][Aviator]
+引入规则引擎似乎就能解决这个问题，规则引擎的一个好处就是可以使业务规则和业务代码分离，从而降低维护难度，同时它还可以满足业务人员通过编写DSL或通过界面指定规则的诉求，这样就可以在没有开发人员参与的情况下建立规则了，这种说法听起来似乎很有道理，但在实践中却很少行得通。首先，规则引擎有一定的学习成本，即使开发人员使用也需要进行专门的学习，更何况没有任何编程背景的业务人员，其次，其实现的复杂度也高，如果业务规则复杂，规则制定者对规则引擎内部隐藏的程序流程不了解，很可能会得到意想不到的结果，最后，有些规则引擎还存在性能瓶颈。如果对规则引擎和表达式引擎都不熟悉，抽离的业务规则又需要由开发人员来制定，那么**相比之下表达式引擎就要容易上手的多，其语法更接近Java，而且有些表达式引擎还会将表达式编译成字节码，在执行速度和资源利用方面可能就更有优势**。 所以，对于此类业务场景，使用表达式引擎似乎更加合适一些。
 
-AviatorScript 是一门高性能、轻量级寄宿于 JVM 之上的脚本语言。AviatorScript 可将表达式编译成字节码。2010年作者在淘宝中间件负责Notify内部消息中间件时开发并开源。
+本文主要对Java表达式引擎进行概要性介绍和分析，并提供一定建议，为团队研发过程中对表达式引擎的技术选型提供输入。
+
+## 2 技术栈简介
+
+本文将针对 AviatorScript 、 MVEL 、 OGNL 、 SpEL 、 QLExpress 、 JEXL 、 JUEL 几种常见表达式引擎进行选型调研。先简单介绍一下这几种表达式引擎。
+
+### 2.1 AviatorScript
+
+AviatorScript 是一门高性能、轻量级寄宿于 JVM 之上的脚本语言。AviatorScript 可将表达式编译成字节码。2010年作者在淘宝中间件负责Notify内部消息中间件时开发并开源。它原来的定位一直只是一个表达式引擎，不支持 if/else 条件语句，也不支持for/while循环语句等，随着5.0的发布变身为一个通用脚本语言，支持了这些语言特性。
 
 文档：https://www.yuque.com/boyan-avfmj/aviatorscript
 
-### [MVEL (MVFLEX Expression Language)][MVEL]
+### 2.2 MVEL (MVFLEX Expression Language)
 
 MVEL是一种混合的动态/静态类型的、可嵌入Java平台的表达式语言，MVEL被众多Java项目使用。MVEL 在很大程度上受到 Java 语法的启发，但也有一些本质区别，目的是使其作为一种表达式语言更加高效，例如直接支持集合、数组和字符串匹配的操作符，以及正则表达式。最早版本发布于2007年。
 
 文档：http://mvel.documentnode.com/
 
-### [OGNL (Object-Graph Navigation Language)][OGNL]
+### 2.3 OGNL (Object-Graph Navigation Language)
 
 OGNL 是 Object-Graph Navigation Language（对象图导航语言）的缩写；它是一种表达式语言，用于获取和设置 Java 对象的属性，以及其他额外功能，如列表投影和选择以及 lambda 表达式。于2005年发布2.1.4版。
 
 文档：https://commons.apache.org/dormant/commons-ognl/language-guide.html
 
-### [SpEL (Spring Expression Language)][Spring]
+### 2.4 SpEL (Spring Expression Language)
 
-是一种功能强大的表达式语言，支持在运行时查询和操作对象图。该语言的语法与 Unified EL 相似，但提供了更多的功能，其中最主要的是方法调用和基本的字符串模板功能。2009年随 Spring 3 发布。
+SpEL是一种功能强大的表达式语言，支持在运行时查询和操作对象图。该语言的语法与 Unified EL 相似，但提供了更多的功能，其中最主要的是方法调用和基本的字符串模板功能。
 
 文档：https://docs.spring.io/spring-framework/docs/5.3.x/reference/html/core.html#expressions
 
-### [QLExpress][QLExpress]
+### 2.5 QLExpress
 
 由阿里的电商业务规则、表达式（布尔组合）、特殊数学公式计算（高精度）、语法分析、脚本二次定制等强需求而设计的一门动态脚本引擎解析工具。在阿里集团有很强的影响力，同时为了自身不断优化、发扬开源贡献精神，于2012年开源。
 
 文档：https://github.com/alibaba/QLExpress
 
-### [JEXL (Java Expression Language)][JEXL]
+### 2.6 JEXL (Java Expression Language)
 
-JEXL 是一个库，旨在促进在 Java 编写的应用程序和框架中实现动态和脚本功能。 JEXL 基于对 JSTL 表达式语言的一些扩展实现了一种表达式语言，支持 shell 脚本或 ECMAScript 中的大部分构想。1.0版发布于2005年。
+JEXL 旨在促进在 Java 编写的应用程序和框架中实现动态脚本功能。 JEXL 基于对 JSTL 表达式语言的一些扩展实现了一种表达式语言，支持 shell 脚本或 ECMAScript 中的大部分构想。1.0版发布于2005年。
 
 文档：https://commons.apache.org/proper/commons-jexl/reference/syntax.html
 
-### [JUEL (Java Unified Expression Language)][JUEL]
+### 2.7 JUEL (Java Unified Expression Language)
 
 JUEL 是统一表达式语言 (EL) 的实现，该语言是 JSP 2.1 标准 (JSR-245) 的一部分，已在 JEE5 中引入。此外，JUEL 2.2 实现了 JSP 2.2 维护版本规范，完全符合 JEE6 标准。于2006年发布2.1.0版本，2.2.7发布于2014年。
 
 文档：https://juel.sourceforge.net/guide/start.html
 
-### [Janino][Janino]
+### 2.8 Janino
 
-Janino是一个超小、超快的Java编译器，也可以用作表达式引擎，它的性能非常出色，根据官网介绍Apache Spark、Apache Flink、Groovy等优秀的开源项目都在用Janino。
+Janino是一个超小、超快的Java编译器，也可以用作表达式引擎，它的性能非常出色，根据官网介绍，Apache Spark、Apache Flink、Groovy等优秀的开源项目都在用Janino。
 
 文档：http://janino-compiler.github.io/janino/
 
-由于Janino实际是一个Java编译器，理论上其性能应该接近于直接执行Java代码，其次作为表达式引擎使用比较复杂。下面的测试中，Janino不参与比较，可以将其作为一个参照。
+由于Janino实际是一个Java编译器，理论上其性能应该更接近于直接执行Java代码，其次作为表达式引擎使用起来比较复杂。因此，下面的对比中，Janino不参与比较，可以将其作为一个参照。
+
+### 2.9 其他
+
+如下一些表达式引擎虽然也常见于各技术博客，但由于长期没有更新维护，因此没有纳入此次选型比较
+
+**Fel**
+
+Fel是轻量级的高效的表达式计算引擎。Fel源自于企业项目，设计目标是为了满足不断变化的功能需求和性能需求。项目托管于Google Code，上次更新是2012年，已经十几年没有更新了，所以没有纳入此次选型。
+
+**ik-expression**
+
+IK Expression是一个开源的（OpenSource)，可扩展的（Extensible），基于java语言开发的一个超轻量级（Super lightweight）的公式化语言解析执行工具包。2009年2月发布第一个版本，2009年10月发布最后一个版本后再没有新版本发布，所以没有纳入此次选型。
+
+**JSEL**
+
+JSEL是一个兼容 JavaScript 运算规则的简单的表达式解释引擎，你可以通过Map接口，或者JavaBean给出一个变量集合，能后通过表达式从这个集合中抽取变量，再通过表达式逻辑生成你需要的数据。2009年发布第一个版本，2011年发布最后一个版本后未再更新，所以没有纳入此次选型。
 
 此外规则引擎如 Drools， urule， easy-rules 等不参与此次选型比较。相对比较成熟完善的脚本语言如Groovy，JavaScript等也不参与选型比较。这篇文章主要针对相对轻量简单的表达式引擎进行选型。
 
-## 技术栈选型评估
+## 3 技术栈选型评估
 
-接下来将从社区情况、引入的大小和依赖、性能、安全性和使用案例几个方面对几种表达式引擎进行评估。
+选择表达式引擎，我们希望其社区支持情况良好、实现复杂度适中、执行速度快、安全并且简单易学。所以，**接下来将从社区支持情况、引入的大小和依赖、性能、安全性、使用案例和语法几个方面对几种表达式引擎进行比较评估**。
 
-### 社区
+### 3.1 社区支持情况
 
-社区活跃度可以辅助评估项目的健康度，有问题是不是能及时解决，项目是不是能持续演进等等，下面列出了GitHub star，watch，fork，last commit等数据，可以作为参考，由于数据随着时间推移会产生变化，以下仅针对2023.10.7的数据进行分析。
-
-由于 Spring 项目被广泛使用，而SpEl又是Spring的一个子项目，所以各项数据SpEl是最活跃的。下面先排除SpEl分析其他几个表达式引擎。
-
-QLExpress，AviatorScript 和 MVEL 在国内使用比较多，这可能是他们star，watch，fork数较高的原因。说明这几个项目受欢迎度，受认可度，影响力应该较高。
-
-从issues，pull requests数来分析，可以看到 MVEL，AviatorScript 和 QLExpress 高于其他脚本引擎，说明他们的用户需求和反馈较多，也可能意味着项目面临较多问题和挑战。
-
-MVEL，JEXL，OGNL 均有较多贡献者参与。他们的社区协作、项目可持续性方面应该都比较不错。
-
-综合以上分析，除SpEl外，QLExpress，AviatorScript 和 MVEL 的社区活跃度都相对较高。
-
-以下是2023.10.7的数据
+**社区支持情况可以辅助评估项目的健康度，有问题是不是能及时解决，项目是不是能持续演进等等**，下面列出了GitHub star，watch，fork，last commit等数据，可以作为参考，由于数据随着时间推移会产生变化，以下仅针对2023.10.7的数据进行分析。
 
 ![Github state](images/github-state.png)
 
@@ -97,9 +112,19 @@ MVEL，JEXL，OGNL 均有较多贡献者参与。他们的社区协作、项目�
 | [JUEL][JUEL]             | ![GitHub Repo stars](https://img.shields.io/github/stars/beckchr/juel)                     | ![GitHub watchers](https://img.shields.io/github/watchers/beckchr/juel)                     | ![GitHub forks](https://img.shields.io/github/forks/beckchr/juel)                     | ![GitHub issues](https://img.shields.io/github/issues/beckchr/juel) ![GitHub closed issues](https://img.shields.io/github/issues-closed/beckchr/juel)                                         | ![GitHub pull requests](https://img.shields.io/github/issues-pr/beckchr/juel) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed/beckchr/juel)                                         | ![GitHub contributors](https://img.shields.io/github/contributors/beckchr/juel)                     | ![GitHub last commit (by committer)](https://img.shields.io/github/last-commit/beckchr/juel)                     |
 | [Janino][Janino]         | ![GitHub Repo stars](https://img.shields.io/github/stars/janino-compiler/janino)           | ![GitHub watchers](https://img.shields.io/github/watchers/janino-compiler/janino)           | ![GitHub forks](https://img.shields.io/github/forks/janino-compiler/janino)           | ![GitHub issues](https://img.shields.io/github/issues/janino-compiler/janino) ![GitHub closed issues](https://img.shields.io/github/issues-closed/janino-compiler/janino)                     | ![GitHub pull requests](https://img.shields.io/github/issues-pr/janino-compiler/janino) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed/janino-compiler/janino)                     | ![GitHub contributors](https://img.shields.io/github/contributors/janino-compiler/janino)           | ![GitHub last commit (by committer)](https://img.shields.io/github/last-commit/janino-compiler/janino)           |
 
-### 大小和依赖
+由于 Spring 项目被广泛使用，而SpEl又是Spring的一个子项目，所以从各项数据来看SpEl的社区支持情况是最好的。下面先排除SpEl分析其他几个表达式引擎。
 
-代码大小和依赖可以辅助评估代码的复杂性，下面列出了各个Github仓库的代码大小，可以作为一个参考（实际并不完全准确反应其实现的复杂性）。
+QLExpress，AviatorScript 和 MVEL 在国内使用比较多，这可能是他们star，watch，fork数较高的原因。说明这几个项目受欢迎度，受认可度，影响力应该较高。
+
+从issues，pull requests数来分析，可以看到 MVEL，AviatorScript 和 QLExpress 高于其他脚本引擎，说明他们的用户需求和反馈较多，也可能意味着项目面临较多问题和挑战。
+
+MVEL，JEXL，OGNL 均有较多贡献者参与。他们的社区协作、项目可持续性方面应该都比较不错。
+
+**综合以上分析，除SpEl外，QLExpress，AviatorScript 和 MVEL 的社区支持情况都相对较好**。
+
+### 3.2 引入大小和依赖
+
+**代码大小和依赖可以辅助评估代码的复杂性**，下面列出了各个Github仓库的代码大小，可以作为一个参考（实际并不完全准确反映其实现的复杂性）。
 
 以下是2023.10.7的数据
 
@@ -151,19 +176,19 @@ JUEL，QLExpress代码大小最小，都在600多KB；其次是 OGNL 1MB多一�
 
 如果考虑 commons-logging 依赖，JEXL 引入的大小是2.5MB左右。
 
-综合来看，JUEL，AviatorScript，MVEL，JEXL 在引入大小和依赖方面要好于其他。
+**综合来看，JUEL，AviatorScript，MVEL，JEXL 在引入大小和依赖方面要好于其他**。
 
-### 性能
+### 3.3 性能
 
-较好的性能意味着系统能够快速地响应用户的请求，减少等待时间，提升体验。
+**较好的性能意味着系统能够快速地响应用户的请求，减少等待时间，提升体验**。
 
 性能方面主要通过 JMH 在字面量表达式、含有变量的表达式以及含有方法调用的表达式等使用场景对几个表达式引擎进行测试。
 
-JMH（Java Microbenchmark Harness），是用于代码微基准测试的工具套件，主要是基于方法层面的基准测试，精度可以达到纳秒级。该工具是由 Oracle 内部实现 JIT 的大牛们编写的，他们应该比任何人都了解 JIT 以及 JVM 对于基准测试的影响
+> JMH（Java Microbenchmark Harness），是用于代码微基准测试的工具套件，主要是基于方法层面的基准测试，精度可以达到纳秒级。该工具是由 Oracle 内部实现 JIT 的大牛们编写的，他们应该比任何人都了解 JIT 以及 JVM 对于基准测试的影响。
 
 由于不同表达式引擎语法或特性稍有差别，下面测试中对于差异项会进行说明。
 
-#### 字面量表达式
+#### 3.3.1 字面量表达式
 
 ![literal](images/literal.svg)
 
@@ -182,7 +207,7 @@ SpEl 在执行第1个算数操作时表现出色，但是在执行第2个嵌套�
 
 此轮测试中 AviatorScript，OGNL，MVEL表现出色。AviatorScript，OGNL 执行两个表达式表现都比较出色，其中AviatorScript略好于OGNL。 MVEL 在执行第1个算数操作时表现最出色，但是在执行第2个嵌套三元操作时慢于AviatorScript，OGNL引擎。
 
-#### 含有变量的表达式
+#### 3.3.2 含有变量的表达式
 
 ![variable](images/variable.svg)
 
@@ -207,7 +232,7 @@ SpEl 在执行第1个算数操作时表现出色，但是在执行第2个嵌套�
 
 第4个含有字符串比较的布尔表达式。AviatorScript，JEXL，MVEL，OGNL 性能明显优于 JUEL，QlExpress，SpEl。
 
-#### 含有方法调用的表达式
+#### 3.3.3 含有方法调用的表达式
 
 ![method](images/method.svg)
 
@@ -224,29 +249,29 @@ SpEl 在执行第1个算数操作时表现出色，但是在执行第2个嵌套�
 
 此轮测试中 SpEl 的表现最优，甚至比Janino还要快。MVEL，AviatorScript次之，在执行构造方法时MVEL要好于AviatorScript。JEXL 表现也比较出色。JUEL，OGNL，QlExpress这三个表达式引擎则不如其他引擎。
 
-#### 总结
+#### 3.3.4 总结
 
-综合以上测试结果，AviatorScript，SpEl，MVEL，OGNL性能表现相对较好。
+**综合以上测试结果，AviatorScript，SpEl，MVEL，OGNL性能表现相对较好**。
 
 AviatorScript 性能相对较好，表现均衡，但其语法相较其他引擎跟Java的差异略大。
 
-SpEl 除了在个别场景下性能较差，大部分场景表现也非常出色，尤其是在算数计算（字面量和含有变量），方法调用场景下。
+SpEl 除了在个别场景下性能较差，大部分场景表现非常出色，尤其是在字面量和含有变量的算数计算及方法调用场景下。
 
 MVEL 性能表现相对均衡，含有变量的算术计算略差于AviatorScript，其在字面量算术计算，方法调用场景下表现都非常出色。
 
 OGNL 性能表现也相对均衡，但方法调用场景下表现不佳。
 
-### 安全
+### 3.4 安全
 
-安全性方面主要通过漏洞披露、安全指南和配置比较几种表达式引擎。
+**引入表达式引擎，应该重视系统的安全性和可靠性，比如要防止在不可信环境中被注入恶意脚本，越权执行某些系统命令或使应用停止服务等**。安全性方面主要通过漏洞披露、安全指南和配置比较几种表达式引擎。
 
-#### 漏洞
+### 3.4.1 漏洞
 
 首先在 https://cve.mitre.org/cve/search_cve_list.html 通过关键字搜索的方式粗略了解一下不同表达式引擎被公开的漏洞。这种方式可能不是非常的准确，由于不同表达式引擎的使用场景、使用方式、关注度的不同可能导致被公开的漏洞存在差异。比如我们所熟悉的 OGNL、SpEl 的关键字出现在漏洞中的频率明显高于其他表达式引擎。OGNL 在[MyBatis][mybatis]和[Struts][struts] 中被使用，SpEl则在[Spring][Spring]中被广泛使用，这两个表达式引擎又被大部分项目间接使用，直接将用户输入作为表达式的一部分执行，很容易导致出现漏洞。
 
-我们可以从这些公布的漏洞中了解不同表达式引擎可能存在的安全隐患及其修复情况，在使用过程中尽可能避免出现类似问题。
+我们**可以从这些公布的漏洞中了解不同表达式引擎可能存在的安全隐患及其修复情况，在使用过程中尽可能避免出现类似问题**。
 
-不推荐将表达式执行直接开放到不可信的环境，如果确实需要，应该详细了解选择的表达式引擎，是否提供了必要的设置选项可以避免某些安全隐患。
+**此外，不推荐将表达式执行直接开放到不可信的环境，如果确实需要，应该详细了解选择的表达式引擎，是否提供了必要的设置选项可以避免某些安全隐患**。
 
 | 名称                       | 关键字链接                                                          | 漏洞数 |
 |--------------------------|----------------------------------------------------------------|-----|
@@ -258,11 +283,11 @@ OGNL 性能表现也相对均衡，但方法调用场景下表现不佳。
 | [JEXL][JEXL]             | https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=JEXL          | 3   |
 | [JUEL][JUEL]             | https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=JUEL          | 1   |
 
-#### 安全设置
+### 3.4.2 安全设置
 
 AviatorScript，QLExpress，JEXL均从不同程度提供了一些安全选项设置。
 
-##### AviatorScript
+**AviatorScript**
 
 * 设置白名单
 
@@ -290,7 +315,7 @@ AviatorScript，QLExpress，JEXL均从不同程度提供了一些安全选项设
     AviatorEvaluator.setOption(Options.FEATURE_SET, Feature.asSet(Feature.If));
     ```
 
-##### QLExpress
+**QLExpress**
 
 * 开启沙箱模式
 
@@ -355,7 +380,7 @@ AviatorScript，QLExpress，JEXL均从不同程度提供了一些安全选项设
     Object r = runner.execute(express, context, null, true, false, 1000);
     ```
 
-##### JEXL
+**JEXL**
 
 * 使用沙箱
 
@@ -376,26 +401,10 @@ AviatorScript，QLExpress，JEXL均从不同程度提供了一些安全选项设
     // 关闭循环、new 实例，import等特性
     new JexlBuilder().features(new JexlFeatures().loops(false).newInstance(false).importPragma(false)).create();
     ``` 
-  
-### 语法
 
-接下来从类型、操作符、控制语句、集合、方法定义几方面比较一下不同表达式引擎的语法设计。
+### 3.5 使用案例
 
-类型方面，AviatorScript 设计了独特的类型，使用时需要注意其类型转换的优先级long->bigint->decimal->double。AviatorScript、MVEL、OGNL、JEXL都支持BigInteger、BigDecimal字面量，这意味着进行精确计算时可以使用字面量，将更方便。此外AviatorScript、QLExpress都支持高精度计算的设置项。
-
-操作符方面，QLExpress支持替换、自定义操作符及操作符别名，这可能有助于简化复杂表达式或使表达式更加直观，不过添加预置函数应该可以达到差不多的效果。AviatorScript也支持自定义部分操作符，不过支持数量相当有限。AviatorScript、SpEl、JEXL支持正则匹配操作符。
-
-控制语句方面，除OGNL、SpEl、JUEL不支持控制语句外，其他都支持，不过需要注意 AviatorScript 的 `else if` 语法有些特殊写作 `elsif`，foreach语句跟Java也有所不同。
-
-集合方面，除JUEL外其他都提供了快捷定义的方式，只不过语法不同。
-
-函数定义方面，SpEl、JUEL均不支持，OGNL支持伪lambda定义，其他都支持定义函数。QLExpress不支持定义lambda。
-
-综合来看，和Java语法都或多或少存在一些差异。AviatorScript设计了自己特有的一些语法，使用的话需要熟悉一下。QLExpress支持自定义操作符，可以使表达式看起来更直观。MVEL、JEXL的语法可能更接近Java，让人更容易接受一些。OGNL、SpEl、JUEL的语法更简单一些，不支持控制语句和函数定义，当然也可以通过预置一些函数变通解决一些较复杂的问题。
-
-### 使用案例
-
-业界使用情况可以分析不同表达式引擎的可行性、生态和整合性，以及最佳实践。从下表可以看到AviatorScript，MVEL，QLExpress在国内业务线均有使用案例，有些企业也有文章输出，我们可以借鉴使用。
+从业界使用情况可以了解不同表达式引擎的可行性、生态和整合性，以及最佳实践，进而借鉴。从下表可以看到AviatorScript，MVEL，QLExpress在国内业务线均有使用案例，有些企业也有文章输出，我们可以借鉴使用。
 
 | 名称                       | 案例                                                                                  | 
 |--------------------------|-------------------------------------------------------------------------------------|
@@ -408,7 +417,23 @@ AviatorScript，QLExpress，JEXL均从不同程度提供了一些安全选项设
 | [JUEL][JUEL]             | JSP                                                                                 |
 | [Janino][Janino]         | Apache Spark、Apache Flink、Groovy                                                    |
 
-### 开源协议
+### 3.6 语法
+
+易于理解和使用的语法可以提高开发效率，并降低学习成本。接下来从类型、操作符、控制语句、集合、方法定义几方面比较一下不同表达式引擎的语法设计。
+
+类型方面，AviatorScript 设计了特有的类型，使用时需要注意其类型转换的优先级long->bigint->decimal->double。AviatorScript、MVEL、OGNL、JEXL都支持BigInteger、BigDecimal字面量，这意味着进行精确计算时可以使用字面量，将更方便，如`10.24B`就表示一个BigDecimal字面量（AviatorScript中BigDecimal字面量后缀是M）。此外AviatorScript、QLExpress还支持高精度计算的设置项。
+
+操作符方面，QLExpress支持替换、自定义操作符及添加操作符别名，这可能有助于简化复杂表达式或使表达式更加直观，不过添加预置函数应该可以达到差不多的效果。AviatorScript也支持自定义部分操作符，不过支持数量相当有限。AviatorScript、SpEl、JEXL支持正则匹配操作符。
+
+控制语句方面，除OGNL、SpEl、JUEL不支持控制语句外，其他都支持，不过需要注意 AviatorScript 的 `else if` 语法有些特殊写作 `elsif`，foreach语句跟Java也有所不同。
+
+集合方面，除JUEL外其他都提供了快捷定义的方式，只不过语法不同。
+
+函数定义方面，SpEl、JUEL均不支持，OGNL支持伪lambda定义，其他都支持定义函数。QLExpress不支持定义lambda。
+
+综合来看，和Java语法都或多或少存在一些差异。**AviatorScript设计了自己特有的一些语法，使用的话需要熟悉一下。QLExpress支持自定义操作符，可以使表达式看起来更直观。MVEL、JEXL的语法可能更接近Java，让人更容易接受一些。OGNL、SpEl、JUEL的语法更简单一些，不支持控制语句和函数定义，当然也可以通过预置一些函数变通解决一些较复杂的问题**。
+
+### 4 开源协议
 
 使用开源软件需要关注潜在的法律和安全风险，选择合适的开源协议的开源软件可以降低这些风险。需要根据项目需求、商业模式、合规性要求等因素综合考量开源协议的影响。
 
@@ -425,9 +450,9 @@ AviatorScript，QLExpress，JEXL均从不同程度提供了一些安全选项设
 
 除 AviatorScript 使用 LGPL-3.0 开源协议外，MVEL、OGNL、SpEL、QLExpress、JEXL、JUEL 均使用 Apache-2.0 开源协议。如果是以类库形式使用 AviatorScript 并做好封装处理，商业软件中使用 AviatorScript 的风险是可控的。
 
-## 选型建议
+## 5 选型建议
 
-社区方面，SpEl无疑是最活跃的。AviatorScript，QLExpress则在国内很受欢迎，AviatorScript 主要由其作者一人维护，QLExpress 则有阿里背书。
+社区方面，SpEl无疑是最活跃的。AviatorScript，QLExpress，MVEL在国内很受欢迎，QLExpress 有阿里背书。
 
 代码大小和依赖方面，AviatorScript，MVEL 依赖少，并且代码大小也偏小。
 
@@ -435,9 +460,26 @@ AviatorScript，QLExpress，JEXL均从不同程度提供了一些安全选项设
 
 安全方面，如果想自定义安全选项，可以考虑 AviatorScript，QLExpress和JEXL。
 
+使用案例方面，AviatorScript，MVEL，QLExpress在国内都有实际使用案例可循。
+
 语法方面，可能存在一些主观因素，仅供参考，个人觉得MVEL、JEXL的语法设计使用起来会更容易一些。
 
-使用案例方面，AviatorScript，MVEL，QLExpress在国内都有实际使用案例可循。
+通过对以上几个方面的评估和分析，希望可以帮助团队基于自身情况及偏好选择最适合自己项目的Java表达式引擎。
+
+## 6 参考资料
+
+* QLExpress： https://github.com/alibaba/QLExpress
+* AviatorScript： https://github.com/killme2008/aviatorscript
+* MVEL： https://github.com/mvel/mvel
+* OGNL： https://github.com/orphan-oss/ognl
+* SpEl： https://github.com/spring-projects/spring-framework
+* Janino： https://github.com/janino-compiler/janino
+* JUEL： https://github.com/beckchr/juel
+* JEXL： https://github.com/apache/commons-jexl
+* Fel： https://github.com/dbcxy/fast-el
+* ik-expression： https://code.google.com/archive/p/ik-expression/
+* JSEL： https://code.google.com/archive/p/lite/wikis/JSEL.wiki
+* JMH： https://www.cnblogs.com/wupeixuan/p/13091381.html
 
 [Aviator]: https://github.com/killme2008/aviatorscript
 [MVEL]: https://github.com/mvel/mvel
